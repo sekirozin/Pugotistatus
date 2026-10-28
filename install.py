@@ -6,6 +6,7 @@ import datetime
 import os
 from pathlib import Path
 import re
+import shutil
 import tempfile
 import tomllib
 
@@ -77,14 +78,52 @@ def instalar(caminho: Path) -> tuple[bool, Path | None]:
     return True, backup
 
 
+def instalar_lancador(destino: Path) -> Path:
+    """Instala o comando que acrescenta barras reais ao terminal Codex."""
+    origem = Path(__file__).with_name("pugotistatus.py")
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(origem, destino)
+    destino.chmod(0o755)
+    return destino
+
+
+def instalar_funcao_fish(destino: Path, lancador: Path) -> bool:
+    """Faz o comando interativo `codex` abrir com barras no Fish."""
+    conteudo = (
+        "# Pugotistatus: o Codex interativo usa barras de uso.\n"
+        "function codex\n"
+        "    if isatty stdin; and isatty stdout; and test (count $argv) -eq 0\n"
+        f"        command {lancador}\n"
+        "    else\n"
+        "        command codex $argv\n"
+        "    end\n"
+        "end\n"
+    )
+    if destino.exists():
+        if destino.read_text(encoding="utf-8") == conteudo:
+            return False
+        raise FileExistsError(f"Função Fish já existe; não foi substituída: {destino}")
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    destino.write_text(conteudo, encoding="utf-8")
+    return True
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, default=Path.home() / ".codex" / "config.toml")
+    parser.add_argument("--bars", action="store_true", help="Instala o comando pugotistatus com barras visuais")
     argumentos = parser.parse_args()
     alterado, backup = instalar(argumentos.config.expanduser())
     print("Pugotistatus instalado." if alterado else "Pugotistatus já está instalado.")
     if backup:
         print(f"Backup: {backup}")
+    if argumentos.bars:
+        destino = instalar_lancador(Path.home() / ".local" / "bin" / "pugotistatus")
+        print(f"Barras: {destino} (inicie com 'pugotistatus')")
+        if Path(os.environ.get("SHELL", "")).name == "fish":
+            funcao = Path.home() / ".config" / "fish" / "functions" / "codex.fish"
+            instalar_funcao_fish(funcao, destino)
+            print(f"Fish: 'codex' sem argumentos abrirá com barras na próxima sessão ({funcao}).")
     print("Reinicie o Codex CLI para ver a barra.")
 
 
