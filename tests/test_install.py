@@ -5,10 +5,21 @@ import tempfile
 import tomllib
 import unittest
 
-from install import INDICADORES, instalar, atualizar
+from install import INDICADORES, instalar, atualizar, instalar_funcao_fish
 
 
 class InstalacaoTest(unittest.TestCase):
+    def test_funcao_fish_nao_substitui_arquivo_existente(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = Path(pasta) / "codex.fish"
+            lancador = Path(pasta) / "pugotistatus"
+            self.assertTrue(instalar_funcao_fish(caminho, lancador))
+            self.assertFalse(instalar_funcao_fish(caminho, lancador))
+            self.assertIn("command codex $argv", caminho.read_text(encoding="utf-8"))
+            caminho.write_text("function codex\nend\n", encoding="utf-8")
+            with self.assertRaises(FileExistsError):
+                instalar_funcao_fish(caminho, lancador)
+
     def test_cria_secao_e_preserva_configuracao(self):
         entrada = 'model = "gpt-6-sol"\n[features]\nsearch = true\n'
         saida = atualizar(entrada)
