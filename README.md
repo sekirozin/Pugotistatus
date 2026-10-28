@@ -4,7 +4,7 @@ Barra de status para o **Codex CLI**, inspirada no [claude-code-statusline](http
 
 ## Instalação
 
-Requer Python 3.11+ e Codex CLI com suporte a `/statusline`.
+Requer Python 3.11+, tmux e Codex CLI com suporte a `/statusline`.
 
 ```bash
 python3 install.py --bars
@@ -18,7 +18,7 @@ O instalador altera somente `tui.status_line` em `~/.codex/config.toml`, preserv
 pugotistatus
 ```
 
-Ele abre o Codex CLI e reserva uma linha inferior com barras coloridas de uso restante nas janelas de 5 horas e 7 dias. Os percentuais vêm de `account/rateLimits/read` do próprio Codex e são atualizados a cada 90 segundos. O contexto continua na barra nativa do Codex, que o conhece com precisão por conversa. Um limite indisponível aparece como `—`.
+Ele abre o Codex CLI dentro do tmux, que reserva a linha inferior para barras coloridas de uso restante nas janelas de 5 horas e 7 dias. Ao sair do Codex, o tmux remove a barra e restaura o terminal. Os percentuais vêm de `account/rateLimits/read` do próprio Codex e são atualizados a cada 90 segundos. O contexto continua na barra nativa do Codex, que o conhece com precisão por conversa. Um limite indisponível aparece como `—`.
 
 No Fish, o instalador também configura o comando interativo `codex` sem argumentos para abrir com as barras. Subcomandos e usos não interativos continuam chamando o executável original. Em Bash ou Zsh, use `pugotistatus` diretamente.
 

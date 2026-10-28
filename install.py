@@ -87,6 +87,25 @@ def instalar_lancador(destino: Path) -> Path:
     return destino
 
 
+def instalar_tmux_config(destino: Path, lancador: Path) -> Path:
+    """Reserva a linha inferior pelo tmux, sem tocar na tela do Codex."""
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    conteudo = (
+        "set -g default-shell /bin/sh\n"
+        "set -g status on\n"
+        "set -g status-position bottom\n"
+        "set -g status-interval 90\n"
+        "set -g status-left ''\n"
+        "set -g window-status-format ''\n"
+        "set -g window-status-current-format ''\n"
+        "set -g status-right-length 75\n"
+        "set -g status-style 'bg=colour235,fg=colour255'\n"
+        f"set -g status-right '#({lancador} --tmux-status)'\n"
+    )
+    destino.write_text(conteudo, encoding="utf-8")
+    return destino
+
+
 def instalar_funcao_fish(destino: Path, lancador: Path) -> bool:
     """Faz o comando interativo `codex` abrir com barras no Fish."""
     conteudo = (
@@ -127,8 +146,12 @@ def main() -> None:
     if backup:
         print(f"Backup: {backup}")
     if argumentos.bars:
+        if not shutil.which("tmux"):
+            raise SystemExit("Barras visuais precisam do tmux. Instale-o e repita este comando.")
         destino = instalar_lancador(Path.home() / ".local" / "bin" / "pugotistatus")
+        config_tmux = instalar_tmux_config(Path.home() / ".config" / "pugotistatus" / "tmux.conf", destino)
         print(f"Barras: {destino} (inicie com 'pugotistatus')")
+        print(f"Terminal: {config_tmux}")
         if Path(os.environ.get("SHELL", "")).name == "fish":
             funcao = Path.home() / ".config" / "fish" / "functions" / "codex.fish"
             instalar_funcao_fish(funcao, destino)

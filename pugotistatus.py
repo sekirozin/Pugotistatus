@@ -1,21 +1,16 @@
 #!/usr/bin/env python3
-"""Abre o Codex CLI com barras de uso em uma faixa própria do terminal."""
+"""Abre o Codex CLI com barras de uso na barra reservada pelo tmux."""
 
 import argparse
-import fcntl
 import json
 import os
-import pty
 import select
+import shlex
 import shutil
-import signal
-import struct
 import subprocess
 import sys
-import termios
-import threading
 import time
-import tty
+from pathlib import Path
 
 
 def consultar_limites(codex="codex", timeout=10):
@@ -97,16 +92,22 @@ def tamanho():
     return t.lines, t.columns
 
 
-def redimensionar(fd, linhas, colunas):
-    fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", max(3, linhas - 1), colunas, 0, 0))
+def barra_tmux(bloco, largura=12):
+    if not bloco or not isinstance(bloco.get("usedPercent"), (int, float)):
+        return "—"
+    livre = 100 - max(0, min(100, float(bloco["usedPercent"])))
+    cor = "#4ade80" if livre > 30 else "#facc15" if livre > 10 else "#f87171"
+    cheios = round(largura * livre / 100)
+    return f"#[fg={cor}]{'█' * cheios}{'░' * (largura - cheios)}#[fg=default] {livre:.0f}%"
 
 
-def desenhar(janelas):
-    linhas, colunas = tamanho()
-    conteudo = faixa(janelas, colunas)
-    # Salva a posição do cursor; a última linha pertence só à faixa de status.
-    os.write(sys.stdout.fileno(),
-             f"\x1b7\x1b[{linhas};1H\x1b[2K\x1b[48;5;235m\x1b[38;5;255m {conteudo}\x1b[0m\x1b8".encode())
+def faixa_tmux(janelas, colunas):
+    largura = 12 if colunas >= 58 else 6
+    partes = [f"5h {barra_tmux(janelas.get(300), largura)}",
+              f"7d {barra_tmux(janelas.get(10080), largura)}"]
+    if colunas < 37:
+        partes = partes[:1]
+    return "  │  ".join(partes)
 
 
 def executar(argumentos):
@@ -115,72 +116,29 @@ def executar(argumentos):
     codex = shutil.which("codex")
     if not codex:
         raise SystemExit("Codex CLI não encontrado no PATH.")
-    janelas = consultar_limites(codex)
-    mestre, escravo = pty.openpty()
-    linhas, colunas = tamanho()
-    redimensionar(escravo, linhas, colunas)
+    tmux = shutil.which("tmux")
+    if not tmux:
+        raise SystemExit("tmux não encontrado. Instale-o para usar as barras visuais.")
+    if "TMUX" in os.environ:
+        return subprocess.call([codex, *argumentos])
+    config = Path.home() / ".config" / "pugotistatus" / "tmux.conf"
+    if not config.exists():
+        raise SystemExit(f"Configuração ausente: {config}. Execute install.py --bars.")
     comando = [codex, "-c", 'tui.status_line=["model-with-reasoning","project-name","git-branch","context-remaining"]', *argumentos]
-    processo = subprocess.Popen(comando, stdin=escravo, stdout=escravo, stderr=escravo,
-                                start_new_session=True)
-    os.close(escravo)
-    entrada = sys.stdin.fileno()
-    anterior = termios.tcgetattr(entrada)
-    parar = threading.Event()
-
-    def atualizar():
-        nonlocal janelas
-        while not parar.wait(90):
-            janelas = consultar_limites(codex)
-
-    thread = threading.Thread(target=atualizar, daemon=True)
-    thread.start()
-    try:
-        tty.setraw(entrada)
-        os.write(sys.stdout.fileno(), b"\x1b[?1049h\x1b[?25h")
-        desenhar(janelas)
-        ultima_atualizacao = janelas
-        while processo.poll() is None:
-            if (tamanho() != (linhas, colunas)):
-                linhas, colunas = tamanho()
-                redimensionar(mestre, linhas, colunas)
-                os.killpg(processo.pid, signal.SIGWINCH)
-                desenhar(janelas)
-            prontos, _, _ = select.select([entrada, mestre], [], [], 0.5)
-            if entrada in prontos:
-                dados = os.read(entrada, 8192)
-                if dados:
-                    os.write(mestre, dados)
-            if mestre in prontos:
-                try:
-                    dados = os.read(mestre, 65536)
-                except OSError:
-                    break
-                if not dados:
-                    break
-                os.write(sys.stdout.fileno(), dados)
-                desenhar(janelas)
-            elif janelas is not ultima_atualizacao:
-                desenhar(janelas)
-            ultima_atualizacao = janelas
-        if processo.poll() is None:
-            processo.terminate()
-        return processo.wait()
-    finally:
-        parar.set()
-        if processo.poll() is None:
-            processo.terminate()
-            processo.wait()
-        os.close(mestre)
-        os.write(sys.stdout.fileno(), b"\x1b[?1049l")
-        termios.tcsetattr(entrada, termios.TCSADRAIN, anterior)
+    return subprocess.call([tmux, "-L", "pugotistatus", "-f", str(config),
+                            "new-session", "-c", str(Path.cwd()), shlex.join(comando)])
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--preview", action="store_true", help="Mostra uma amostra das barras e sai")
+    parser.add_argument("--tmux-status", action="store_true", help=argparse.SUPPRESS)
     opcoes, argumentos = parser.parse_known_args()
     if opcoes.preview:
         print(faixa(consultar_limites(), tamanho()[1], cores=sys.stdout.isatty()))
+        return
+    if opcoes.tmux_status:
+        print(faixa_tmux(consultar_limites(), tamanho()[1]))
         return
     raise SystemExit(executar(argumentos))
 
