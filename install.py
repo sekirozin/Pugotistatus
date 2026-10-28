@@ -92,8 +92,8 @@ def instalar_funcao_fish(destino: Path, lancador: Path) -> bool:
     conteudo = (
         "# Pugotistatus: o Codex interativo usa barras de uso.\n"
         "function codex\n"
-        "    if isatty stdin; and isatty stdout; and test (count $argv) -eq 0\n"
-        f"        command {lancador}\n"
+        "    if isatty stdin; and isatty stdout; and not contains -- exec app-server login logout update --help --version $argv\n"
+        f"        command {lancador} $argv\n"
         "    else\n"
         "        command codex $argv\n"
         "    end\n"
