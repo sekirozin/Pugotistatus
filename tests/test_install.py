@@ -18,6 +18,7 @@ class InstalacaoTest(unittest.TestCase):
             self.assertIn("command codex $argv", caminho.read_text(encoding="utf-8"))
             self.assertIn(f"command {lancador} $argv", caminho.read_text(encoding="utf-8"))
             self.assertNotIn("-eq 0", caminho.read_text(encoding="utf-8"))
+            self.assertIn("if contains -- $arg exec app-server", caminho.read_text(encoding="utf-8"))
             caminho.write_text("function codex\nend\n", encoding="utf-8")
             with self.assertRaises(FileExistsError):
                 instalar_funcao_fish(caminho, lancador)
