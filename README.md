@@ -7,10 +7,20 @@ Barra de status para o **Codex CLI**, inspirada no [claude-code-statusline](http
 Requer Python 3.11+ e Codex CLI com suporte a `/statusline`.
 
 ```bash
-python3 install.py
+python3 install.py --bars
 ```
 
-O instalador altera somente `tui.status_line` em `~/.codex/config.toml`, preserva as demais opções e cria um backup antes da primeira alteração. Reinicie o Codex CLI para ver a barra. Também é possível ajustar a ordem pelo comando `/statusline` dentro do Codex.
+O instalador altera somente `tui.status_line` em `~/.codex/config.toml`, preserva as demais opções e cria um backup antes da alteração. Instala também o comando `~/.local/bin/pugotistatus`.
+
+**Para ver as barrinhas**, abra uma nova sessão de terminal com:
+
+```bash
+pugotistatus
+```
+
+Ele abre o Codex CLI e reserva uma linha inferior com barras coloridas de uso restante nas janelas de 5 horas e 7 dias. Os percentuais vêm de `account/rateLimits/read` do próprio Codex e são atualizados a cada 90 segundos. O contexto continua na barra nativa do Codex, que o conhece com precisão por conversa. Um limite indisponível aparece como `—`.
+
+No Fish, o instalador também configura o comando interativo `codex` sem argumentos para abrir com as barras. Subcomandos e usos não interativos continuam chamando o executável original. Em Bash ou Zsh, use `pugotistatus` diretamente.
 
 Exemplo de configuração instalada:
 
@@ -19,7 +29,7 @@ Exemplo de configuração instalada:
 status_line = ["model-with-reasoning", "project-name", "git-branch", "context-remaining", "five-hour-limit", "weekly-limit"]
 ```
 
-O Codex omite indicadores sem dados disponíveis. Em terminais estreitos, pode ocultar itens; a ordem prioriza o modelo e o projeto. O recurso é do **terminal Codex CLI** e não modifica a interface gráfica ou a extensão do editor.
+O Codex omite indicadores sem dados disponíveis. Em terminais estreitos, a faixa visual encurta as barras. O recurso é do **terminal Codex CLI** e não modifica a interface gráfica ou a extensão do editor.
 
 Para escolher outro arquivo de configuração:
 
