@@ -1,4 +1,4 @@
-"""Casos de instalação e preservação da configuração do Codex."""
+"""PQA-123: instalação, preservação da configuração e roteamento Fish do Codex."""
 
 from pathlib import Path
 import tempfile
