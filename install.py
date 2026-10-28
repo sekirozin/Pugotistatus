@@ -92,17 +92,26 @@ def instalar_funcao_fish(destino: Path, lancador: Path) -> bool:
     conteudo = (
         "# Pugotistatus: o Codex interativo usa barras de uso.\n"
         "function codex\n"
-        "    if isatty stdin; and isatty stdout; and not contains -- exec app-server login logout update --help --version $argv\n"
-        f"        command {lancador} $argv\n"
-        "    else\n"
-        "        command codex $argv\n"
+        "    for arg in $argv\n"
+        "        if contains -- $arg exec app-server login logout update mcp agents cloud completion --help --version -h -V\n"
+        "            command codex $argv\n"
+        "            return\n"
+        "        end\n"
         "    end\n"
+        "    if isatty stdin; and isatty stdout\n"
+        f"        command {lancador} $argv\n"
+        "        return\n"
+        "    end\n"
+        "    command codex $argv\n"
         "end\n"
     )
     if destino.exists():
-        if destino.read_text(encoding="utf-8") == conteudo:
+        atual = destino.read_text(encoding="utf-8")
+        if atual == conteudo:
             return False
-        raise FileExistsError(f"Função Fish já existe; não foi substituída: {destino}")
+        if not atual.startswith("# Pugotistatus: o Codex interativo usa barras de uso.\n"):
+            raise FileExistsError(f"Função Fish já existe; não foi substituída: {destino}")
+        destino.with_suffix(".fish.bak-pugotistatus").write_text(atual, encoding="utf-8")
     destino.parent.mkdir(parents=True, exist_ok=True)
     destino.write_text(conteudo, encoding="utf-8")
     return True
