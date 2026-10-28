@@ -138,6 +138,7 @@ def executar(argumentos):
         tty.setraw(entrada)
         os.write(sys.stdout.fileno(), b"\x1b[?1049h\x1b[?25h")
         desenhar(janelas)
+        ultima_atualizacao = janelas
         while processo.poll() is None:
             if (tamanho() != (linhas, colunas)):
                 linhas, colunas = tamanho()
@@ -157,7 +158,10 @@ def executar(argumentos):
                 if not dados:
                     break
                 os.write(sys.stdout.fileno(), dados)
-            desenhar(janelas)
+                desenhar(janelas)
+            elif janelas is not ultima_atualizacao:
+                desenhar(janelas)
+            ultima_atualizacao = janelas
         if processo.poll() is None:
             processo.terminate()
         return processo.wait()
